@@ -7,25 +7,41 @@ const ProductGrid = ({ activeCategory = 'All' }) => {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  // ✅ normalize category (VERY IMPORTANT)
+  const normalizedCategory =
+    activeCategory && activeCategory !== 'All'
+      ? activeCategory.toLowerCase()
+      : 'All';
+
   useEffect(() => {
     const fetchProducts = async () => {
       setLoading(true);
       try {
-        const productsRef = collection(db, "products");
-        
-        // Filter by category if not 'All', limit results for performance
-        const q = (activeCategory && activeCategory !== 'All') 
-          ? query(productsRef, where("category", "==", activeCategory), limit(20))
-          : query(productsRef, limit(50));
+        const productsRef = collection(db, 'products');
+
+        let q;
+
+        // ✅ category filter
+        if (normalizedCategory !== 'All') {
+          q = query(
+            productsRef,
+            where('category', '==', normalizedCategory),
+            limit(20)
+          );
+        } else {
+          q = query(productsRef, limit(50));
+        }
 
         const querySnapshot = await getDocs(q);
-        const fetched = querySnapshot.docs.map(doc => ({
+
+        const fetchedProducts = querySnapshot.docs.map(doc => ({
           id: doc.id,
-          ...doc.data()
+          ...doc.data(),
         }));
-        setProducts(fetched);
+
+        setProducts(fetchedProducts);
       } catch (error) {
-        console.error("Firebase Fetch Error:", error);
+        console.error('Firebase Fetch Error:', error);
         setProducts([]);
       } finally {
         setLoading(false);
@@ -33,25 +49,28 @@ const ProductGrid = ({ activeCategory = 'All' }) => {
     };
 
     fetchProducts();
-  }, [activeCategory]);
+  }, [normalizedCategory]);
 
-  // Memoize products to prevent unnecessary re-renders
   const memoizedProducts = useMemo(() => products, [products]);
 
-  if (loading) return (
-    <section className="product-grid-section">
-      <div className="loading-skeleton">
-        {[...Array(8)].map((_, i) => (
-          <div key={i} className="skeleton-card">
-            <div className="skeleton-image"></div>
-            <div className="skeleton-text"></div>
-            <div className="skeleton-price"></div>
-          </div>
-        ))}
-      </div>
-    </section>
-  );
+  // ✅ loading state
+  if (loading) {
+    return (
+      <section className="product-grid-section">
+        <div className="loading-skeleton">
+          {[...Array(8)].map((_, i) => (
+            <div key={i} className="skeleton-card">
+              <div className="skeleton-image"></div>
+              <div className="skeleton-text"></div>
+              <div className="skeleton-price"></div>
+            </div>
+          ))}
+        </div>
+      </section>
+    );
+  }
 
+  // ✅ final render
   return (
     <section className="product-grid-section" id="products">
       <div className="product-grid">
